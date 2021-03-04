@@ -1,0 +1,43 @@
+#!/bin/bash
+#helm方式安装k8s官方ingress controller
+#ingress controller for Kubernetes using NGINX as a reverse proxy and load balancer,prerequisites:Kubernetes v1.16+
+
+#get repo info
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+#customizing the chart before installing
+helm show values ingress-nginx/ingress-nginx
+
+
+#install chart,DaemonSet方式
+helm install [RELEASE_NAME] ingress-nginx/ingress-nginx \
+--namespace ingress \
+--set controller.image.repository=hualeel/ingress-nginx-controller \
+--set controller.tag="v0.440" \
+--set controller.dnsPolicy=ClusterFirstWithHostNet
+--set controller.hostNetwork=true \
+--set controller.nodeSelector.ingress="true"
+--set controller.ingressClass=nginx-k8s-official
+--set controller.kind=DaemonSet \            
+--set controller.service.enabled=false \                                # 如果适用hostNetWork网络，service关闭
+#--set controller.service.type=ClusterIP \                               # 如果适用hostNetWork网络，关闭service
+--set controller.autoscaling.enabled=true \                             #自动扩缩容
+--set controller.metrics.enabled=true \                                 #metric启用
+--set defaultBackend.enabled=true \
+--set defaultBackend.image.repoditory=hualeel/defaultbackend-amd64 \
+--set defaultBackend.image.tag="1.5"
+--set rbac.create=true
+#value最佳配置，适用生产环境
+#1.ingressClass，内网和公网分开，分别叫：internal-ingree-group,public-ingress-group
+#2.hostNetwork=true
+#3.kind=DaemonSet
+#4.service创建设为false
+#5.nodeSelector: nodetype=ingress
+#6.healthCheckPath自定义
+#7.metrics开启，port默认10254，注意防火墙规则是否打开(curl ip:10254/metrics)
+#8.defaultBackend最好打开下
+#9. publishService.enable 修改成false，不然需要你为controller创建一个默认的svc
+
+
+
