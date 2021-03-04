@@ -9,24 +9,23 @@ helm repo update
 #customizing the chart before installing
 helm show values ingress-nginx/ingress-nginx
 
-
 #install chart,DaemonSet方式
-helm install [RELEASE_NAME] ingress-nginx/ingress-nginx \
+helm install ingress-k8s-official ingress-nginx/ingress-nginx \
 --namespace ingress \
 --set controller.image.repository=hualeel/ingress-nginx-controller \
---set controller.tag="v0.440" \
---set controller.dnsPolicy=ClusterFirstWithHostNet
+--set controller.tag="v0.44.0" \
+--set controller.dnsPolicy=ClusterFirstWithHostNet \
 --set controller.hostNetwork=true \
---set controller.nodeSelector.ingress="true"
---set controller.ingressClass=nginx-k8s-official
---set controller.kind=DaemonSet \            
---set controller.service.enabled=false \                                # 如果适用hostNetWork网络，service关闭
-#--set controller.service.type=ClusterIP \                               # 如果适用hostNetWork网络，关闭service
---set controller.autoscaling.enabled=true \                             #自动扩缩容
---set controller.metrics.enabled=true \                                 #metric启用
+--set controller.ingressClass=nginx-k8s-official \
+--set controller.kind=DaemonSet \
+--set controller.daemonset.useHostPort=true \
+--set controller.daemonset.hostNetwork=true \
+--set controller.service.type=ClusterIP
+--set controller.autoscaling.enabled=true \
+--set controller.metrics.enabled=true \
 --set defaultBackend.enabled=true \
---set defaultBackend.image.repoditory=hualeel/defaultbackend-amd64 \
---set defaultBackend.image.tag="1.5"
+--set defaultBackend.image.repository=hualeel/defaultbackend-amd64 \
+--set defaultBackend.image.tag="1.5" \
 --set rbac.create=true
 #value最佳配置，适用生产环境
 #1.ingressClass，内网和公网分开，分别叫：internal-ingree-group,public-ingress-group
@@ -38,6 +37,56 @@ helm install [RELEASE_NAME] ingress-nginx/ingress-nginx \
 #7.metrics开启，port默认10254，注意防火墙规则是否打开(curl ip:10254/metrics)
 #8.defaultBackend最好打开下
 #9. publishService.enable 修改成false，不然需要你为controller创建一个默认的svc
+
+#ingress test
+cat <<EOF | tee ingress-workload.yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: my-nginx
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: my-nginx
+    spec:
+      containers:
+      - name: my-nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nginx
+  labels:
+    app: my-nginx
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    name: http
+  selector:
+    run: my-nginx
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: my-nginx
+  annotations:
+    kubernetes.io/ingress.class: "nginx-k8s-official"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        backend:
+          serviceName: my-nginx
+          servicePort: 80
+EOF
+EOF
 
 
 
