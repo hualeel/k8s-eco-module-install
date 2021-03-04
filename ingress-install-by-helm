@@ -86,7 +86,6 @@ spec:
           serviceName: my-nginx
           servicePort: 80
 EOF
-EOF
 
 
 
