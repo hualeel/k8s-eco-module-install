@@ -1,0 +1,60 @@
+#server端部署
+yum -y install nfs-utils rpcbind
+
+#设置开机启动nfs相关服务
+systemctl start rpcbind
+systemctl enable rpcbind
+systemctl start nfs
+systemctl enable nfs
+
+# 新建NFS数据存储目录
+mkdir /root/nfs_data
+chmod -R 777 /root/nfs_data
+
+#配置NFS参数
+echo "/root/nfs_data 192.168.0.0/16(rw,sync,no_root_squash)" >> /etc/exports
+exportfs -a 
+
+#检查共享目录是否设置生效
+showmount -e
+
+#Client端部署
+yum -y install nfs-utils
+
+#检查共享目录是否正确
+showmount -e 192.168.0.100
+
+#挂载远程NFS服务器分区到本地挂载点
+#创建本地挂载目录
+mkdir -p /root/nfs_client
+mount -t nfs 192.168.0.100:/root/nfs_data /root/nfs_client
+
+#挂载格式解读：
+#mount -t nfs -o nolock,vers=2 10.0.0.147:/work/nfs /mnt
+#mount :挂载命令
+#nfs :使用的协议
+#nolock :不阻塞
+#vers : 使用的NFS版本号
+#IP : NFS服务器的IP（NFS服务器运行在哪个系统上，就是哪个系统的IP）
+#/work/nfs: 要挂载的目录
+#/mnt : 要挂载到的目录（开发板上的目录，注意挂载成功后，/mnt下原有数据将会被隐藏，无法找到）
+
+#取消挂载
+umount 192.168.0.100:/root/nfs_data
+
+#验证NFS共享是否成功
+#切换到server端
+cd /root/nfs_data
+ls
+tocha a.txt
+
+#切换到client端
+cd /root/nfs_client
+ls
+#检查是否生成a.txt
+
+#使用df查看挂载情况
+df
+
+
+
