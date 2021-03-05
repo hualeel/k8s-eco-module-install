@@ -1,0 +1,7 @@
+helm repo add harbor https://helm.goharbor.io
+helm repo update
+
+helm install harbor --namespace=harbor /
+--set externalURL=http://124.70.216.224:30021
+--set expose.type=nodePort
+--set expose.tls.enabled=false
