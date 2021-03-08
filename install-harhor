@@ -1,40 +1,22 @@
 #新增chart仓库
 helm repo add harbor https://helm.goharbor.io
 helm repo update
-# pvc方式
+
+# storageclass方式安装
 # 变量定义，chart value说明：https://github.com/goharbor/harbor-helm
+#执行安装
 namespace=harbor
 NODE_IP="121.36.221.108"                  #此参数为部署时指定的访问地址，写当前集群中任意一个master节点的ip即可
-database_pvc=harbor-db-pvc                #harbor数据库使用的pvc，需要事先在default下创建这个pvc
-redis_pvc=harbor-redis-pvc                #harbor的redis使用的pvc，需要事先在default下创建这个pvc
-chartmuseum_pvc=harbor-chartmuseum-pvc    #harbor使用的pvc，需要事先在default下创建这个pvc
-registry_pvc=harbor-registry-pvc          #harbor的registry使用的pvc，需要事先在default下创建这个pvc
-jobservice_pvc=harbor-job-pvc             #harbor使用的pvc，需要事先在default下创建这个pvc
-harbor_password="Harbor12345"             #harbor的密码，默认不需要修改，若有规划，可改
-db_password="Harbor12345"                 #harbor数据库的密码，默认不需要修改，若有规划，可改
-redis_password="Harbor12345"              #harbor的redis的密码，默认不需要修改，若有规划，可改
+storageclass=nfs
 
-#执行安装
-helm install harbor --namespace=$namespace harbor/harbor
---set externalURL=http://${NODE_IP}:31104 \
-    --set harborAdminPassword=Harbor12345 \
-    --set ingress.enabled=false \
-    --set service.type=NodePort \
-    --set service.ports.http.nodePort=31104 \
-    --set service.ports.ssh.nodePort=31105 \
-    --set service.ports.https.nodePort=31106 \
-    --set database.password=$db_password \
-    --set redis.usePassword=true \
-    --set redis.password=$redis_password \
-    --set database.persistence.enabled=true \
-    --set database.persistence.existingClaim=${database_pvc} \
-    --set redis.persistence.enabled=true \
-    --set redis.persistence.existingClaim=${redis_pvc} \
-    --set chartmuseum.persistence.enabled=true \
-    --set chartmuseum.persistence.existingClaim=${chartmuseum_pvc} \
-    --set registry.persistence.enabled=true \
-    --set registry.persistence.existingClaim=${registry_pvc} \
-    --set jobservice.persistence.enabled=true \
-    --set jobservice.persistence.existingClaim=${jobservice_pvc} \
- 
-
+helm install harbor --namespace=$namespace harbor/harbor \
+--set externalURL=http://${NODE_IP}:30002 \
+--set harborAdminPassword=Harbor12345 \
+--set expose.tls.enabled=false \
+--set expose.type=NodePort \
+--set persistence.persistentVolumeClaim.registry.storageClass=$storageclass \
+--set persistence.persistentVolumeClaim.chartmuseum.storageClass=$storageclass \
+--set persistence.persistentVolumeClaim.jobservice.storageClass=$storageclass \
+--set persistence.persistentVolumeClaim.database.storageClass=$storageclass \
+--set persistence.persistentVolumeClaim.redis.storageClass=$storageclass \
+--set persistence.persistentVolumeClaim.trivy.storageClass=$storageclass
