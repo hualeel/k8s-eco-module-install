@@ -227,7 +227,36 @@ EOF
 # 使用主机名 mysql-read 将测试查询发送到任何报告为就绪的服务器
 kubectl run mysql-client --image=mysql:5.7 -i -t --rm --restart=Never --\
   mysql -h mysql-read -e "SELECT * FROM test.messages"
+---
 # mysql-read 服务在服务器之间分配连接，你可以在循环中运行 SELECT @@server_id
 kubectl run mysql-client-loop --image=mysql:5.7 -i -t --rm --restart=Never --\
   bash -ic "while sleep 1; do mysql -h mysql-read -e 'SELECT @@server_id,NOW()'; done"
+---
+# 破坏就绪态探测,为了证明从副本节点缓存而不是单个服务器读取数据的可用性提高，请在使 Pod 退出 Ready 状态时，保持上述 SELECT @@server_id 循环一直运行
+kubectl exec mysql-2 -c mysql -- mv /usr/bin/mysql /usr/bin/mysql.off
+
+# 此命令会进入 Pod mysql-2 的实际容器文件系统，重命名 mysql 命令，导致就绪态探测无法找到它。 几秒钟后， Pod 会报告其中一个容器未就绪。你可以通过运行以下命令进行检查：
+kubectl get pod mysql-2
+
+# 现在修复 Pod，几秒钟后它应该重新出现在循环输出中：
+kubectl exec mysql-2 -c mysql -- mv /usr/bin/mysql.off /usr/bin/mysql
+---
+# 删除 pods，如果删除了 Pod，则 StatefulSet 还会重新创建 Pod，类似于 ReplicaSet 对无状态 Pod 所做的操作。
+kubectl delete pod mysql-2
+
+--
+# 扩展副本数量
+kubectl scale statefulset mysql --replicas=5
+kubectl get pods -l app=mysql --watch
+kubectl run mysql-client --image=mysql:5.7 -i -t --rm --restart=Never --\
+  mysql -h mysql-3.mysql -e "SELECT * FROM test.messages"
+
+
+
+
+
+
+
+
+  
 
