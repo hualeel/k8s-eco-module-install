@@ -13,4 +13,4 @@ helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs
     --set image.tag=latest \
     --set replicaCount=1 \
     --set storageClass.name=nfs \
-    --set storageClass.defaultClass=true \
+    --set storageClass.defaultClass=true
