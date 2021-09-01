@@ -7,7 +7,7 @@ helm repo update
 #执行安装
 namespace=harbor
 NODE_IP="121.36.221.108"                  #此参数为部署时指定的访问地址，写当前集群中任意一个master节点的ip即可
-storageclass=nfs
+storageclass=nfs-client
 
 helm install harbor --namespace=$namespace harbor/harbor \
 --set externalURL=http://${NODE_IP}:30002 \
