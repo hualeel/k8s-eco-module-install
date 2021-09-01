@@ -4,12 +4,8 @@
 helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
 
 #chart参数：https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner/blob/master/charts/nfs-subdir-external-provisioner/README.md
-helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
-    --namespace=nfs-provisioner \
+helm install --namespace=nfs-provisioner nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+    --set image.repository=willdockerhub/nfs-subdir-external-provisioner \
+    --set image.tag=v4.0.2
     --set nfs.server=192.168.0.117 \
-    --set nfs.path=/root/nfs_data \
-    --set image.repository=quay.io/external_storage/nfs-client-provisioner \
-    --set image.tag=latest \
-    --set replicaCount=1 \
-    --set storageClass.name=nfs \
-    --set storageClass.defaultClass=true
+    --set nfs.path=/root/nfs_data
