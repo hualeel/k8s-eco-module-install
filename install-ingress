@@ -1,4 +1,4 @@
-#!/bin/bash
+# 
 #helm方式安装k8s官方ingress controller
 #ingress controller for Kubernetes using NGINX as a reverse proxy and load balancer,prerequisites:Kubernetes v1.16+
 
@@ -10,23 +10,30 @@ helm repo update
 helm show values ingress-nginx/ingress-nginx
 
 #install chart,DaemonSet方式
-helm install ingress-k8s-official ingress-nginx/ingress-nginx \
---namespace ingress \
---set controller.image.repository=hualeel/ingress-nginx-controller \
---set controller.tag="v0.44.0" \
---set controller.dnsPolicy=ClusterFirstWithHostNet \
---set controller.hostNetwork=true \
---set controller.ingressClass=nginx-k8s-official \
---set controller.kind=DaemonSet \
---set controller.daemonset.useHostPort=true \
---set controller.daemonset.hostNetwork=true \
---set controller.service.type=ClusterIP
---set controller.autoscaling.enabled=true \
---set controller.metrics.enabled=true \
---set defaultBackend.enabled=true \
---set defaultBackend.image.repository=hualeel/defaultbackend-amd64 \
---set defaultBackend.image.tag="1.5" \
---set rbac.create=true
+helm install --namespace=app ingress-k8s ingress-nginx/ingress-nginx \
+	--set controller.image.registry=192.168.0.68:30002 \
+	--set controller.image.image=ingress/ingress-nginx-controller \
+	--set controller.image.tag="v1.0.0" \
+	--set controller.image.digest=sha256:d7080bb71cc9c3a9d8b327a5d9b29edb0494ebcda4b4437f399c328db9883dff \
+	--set controller.dnsPolicy=ClusterFirstWithHostNet \
+	--set controller.hostNetwork=true \
+	--set controller.ingressClassResource.name=nginx-k8s-official \
+	--set controller.kind=DaemonSet \
+# 	--set controller.daemonset.useHostPort=true \
+# 	--set controller.daemonset.hostNetwork=true \
+	--set controller.service.type=ClusterIP \
+	--set controller.autoscaling.enabled=true \
+	--set controller.metrics.enabled=true \
+	--set controller.admissionWebhooks.patch.image.registry=192.168.0.68:30002 \
+	--set controller.admissionWebhooks.patch.image.image=ingress/kube-webhook-certgen \
+	--set controller.admissionWebhooks.patch.image.tag="v1.0.0" \
+	--set controller.admissionWebhooks.patch.image.digest=sha256:58fde0ddd7a0d1bf1483fed53e363144ae8741d8a2d6c129422e8b1b9aa0543c \
+	--set defaultBackend.enabled=true \
+	--set defaultBackend.image.registry=192.168.0.68:30002 \
+	--set defaultBackend.image.image=ingress/defaultbackend-amd64 \
+	--set defaultBackend.image.tag="1.5" \
+	--set defaultBackend.image.digest=sha256:4dc5e07c8ca4e23bddb3153737d7b8c556e5fb2f29c4558b7cd6e6df99c512c7 \
+	--set rbac.create=true
 #value最佳配置，适用生产环境
 #1.ingressClass，内网和公网分开，分别叫：internal-ingree-group,public-ingress-group
 #2.hostNetwork=true
@@ -37,52 +44,67 @@ helm install ingress-k8s-official ingress-nginx/ingress-nginx \
 #7.metrics开启，port默认10254，注意防火墙规则是否打开(curl ip:10254/metrics)
 #8.defaultBackend最好打开下
 #9. publishService.enable 修改成false，不然需要你为controller创建一个默认的svc
-
-#ingress test
-cat <<EOF | tee ingress-workload.yaml
-apiVersion: extensions/v1beta1
+---
+# 创建ingress资源对象，ingress.class使用 helm 安装时指定的，否则默认为『nginx』
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: ingress
+  namespace: app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /app-ns
+        pathType: Prefix
+        backend:
+          serviceName: nginx
+          servicePort: 80
+---
+# 创建一个 nginx 的deployment资源
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my-nginx
+  name: nginx
+  namespace: ingress
 spec:
-  replicas: 1
+  replicas: 3
+  selector:
+      matchLabels:
+        app: nginx
   template:
     metadata:
       labels:
-        run: my-nginx
+        app: nginx
     spec:
       containers:
-      - name: my-nginx
+      - name: nginx
         image: nginx
+        volumeMounts:
+        - name: wwwroot
+          mountPath: /usr/share/nginx/html
         ports:
         - containerPort: 80
+      volumes:
+      - name: wwwroot
+        persistentVolumeClaim:
+          claimName: nginx-pvc
 ---
+# 创建svc，对应 nginx 应用
 apiVersion: v1
 kind: Service
 metadata:
-  name: my-nginx
+  name: nginx
   labels:
-    app: my-nginx
+    app: nginx
 spec:
   ports:
   - port: 80
     protocol: TCP
     name: http
   selector:
-    run: my-nginx
----
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: my-nginx
-  annotations:
-    kubernetes.io/ingress.class: "nginx-k8s-official"
-spec:
-  rules:
-  - http:
-      paths:
-      - path: /
-        backend:
-          serviceName: my-nginx
-          servicePort: 80
-EOF
+    app: nginx
+
