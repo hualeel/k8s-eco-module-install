@@ -9,6 +9,9 @@ namespace=harbor
 NODE_IP="121.36.221.108"                  #此参数为部署时指定的访问地址，写当前集群中任意一个master节点的ip即可
 storageclass=nfs-client
 
+# 创建 harbor 命名空间
+kubectl create ns $namesapce
+
 helm install harbor --namespace=$namespace harbor/harbor \
 --set externalURL=http://${NODE_IP}:30002 \
 --set harborAdminPassword=Harbor12345 \
