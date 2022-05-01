@@ -6,6 +6,6 @@ helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/
 #chart参数：https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner/blob/master/charts/nfs-subdir-external-provisioner/README.md
 helm install --namespace=nfs-provisioner nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
     --set image.repository=willdockerhub/nfs-subdir-external-provisioner \
-    --set image.tag=v4.0.2
+    --set image.tag=v4.0.2 \
     --set nfs.server=192.168.0.117 \
     --set nfs.path=/root/nfs_data
